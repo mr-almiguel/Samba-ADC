@@ -1,0 +1,110 @@
+This section describes how to set up Samba as an Active Directory Domain Controller
+
+---------------------------------Pre-requsits--------------------------------------
+1. An installed version of Debian (in this case we are going to install it on Debian 11)
+
+
+----------------------------------Sarting the process-------------------------------
+Files we are going to edit: 
+  /etc/hosts
+  /etc/resolv.conf
+  /etc/hostname
+  /etc/network/interfaces
+  
+1. ########################Preparing the host#####################
+  Note: All the action we are going to perform in this step requires sudo privileges, so please make sure you have such privilege.
+
+a) - With sudo privileges edit the /etc/hostname file and give a name for your AD DC, or open a command line and execute the following command # hostnamectl set-hostname "your AD DC"
+    the hostname file should look like this:
+    SambaDC1
+    
+ b) -  Use a static IP address on the DC, by editting the /etc/network/interfaces file
+      Ths interfaces file should have the following content: 
+      
+      # This file describes the network interfaces available on your system
+      # and how to activate them. For more information, see interfaces(5).
+
+      source /etc/network/interfaces.d/*
+
+      # The loopback network interface
+      auto lo
+      iface lo inet loopback
+
+      # The primary network interface
+      allow-hotplug enp0s3
+      iface enp0s3 inet static
+
+       address 192.168.1.200
+       netmask 255.255.255.0
+       gateway 192.168.1.1
+       dns-domain example.com
+       dns-search example.com
+       dns-nameservers 1.1.1.1 8.8.8.8
+  
+  c) - Now edit the /etc/hosts file, and select a DNS domain for your AD forest. after this step the hosts file should look like this:
+    127.0.0.1     localhost
+    192.168.1.200     SambaDC1.example.com     SambaDC1
+  
+  d) - Execute the following command # unlink /etc/resolv.conf, then edit the /etc/resolv.conf, add the following content:
+    nameserver 192.168.1.200
+    search example.com 
+    domain example.com 
+    
+    *save the file the and exit, now execute the following comamnd # chattr +i /etc/resolv.conf
+    
+    
+  e) - lastly remove an existing /etc/krb5.conf file:
+      # rm /etc/krb5.conf
+      
+      
+ 2- ########################Installing Samba#####################
+      Now you have to make a decision whether you want to install samba from package or you want to compile yourself.
+      In this example we are going to build samba from source 
+      
+      
+      2a) - Package Dependencies Required to Build Samba - Debian / Ubuntu
+      To build samba from source we need to install to following dependencies on our Debian 11 system:
+      
+        apt-get install acl attr autoconf bind9utils bison build-essential \
+          debhelper dnsutils docbook-xml docbook-xsl flex gdb libjansson-dev krb5-user \
+          libacl1-dev libaio-dev libarchive-dev libattr1-dev libblkid-dev libbsd-dev \
+          libcap-dev libcups2-dev libgnutls28-dev libgpgme-dev libjson-perl python3-iso8601 \
+          libldap2-dev libncurses5-dev libpam0g-dev libparse-yapp-perl python3-dbus \
+          libpopt-dev libreadline-dev nettle-dev perl perl-modules-5.32 pkg-config \
+          python3-all-dev python3-cryptography python3-dbg python-dev-is-python3 \
+          python3-dnspython python3-gpg python3-gpg python3-markdown libtasn1-bin \
+          python3-dev xsltproc zlib1g-dev liblmdb-dev lmdb-utils  libdbus-1-dev python3-pyasn1 -y
+          
+         
+         
+          ############################Optional - My own preferency##################################
+          apt install bind9 bind9utils vim locate firewalld dnsutils net-tools wget curl ntp isc-dhcp-server ntpdate bzip2 -y
+          
+          2b ) - Now download your prefered version of samba - in this case we are going to download the latest version 4.15.1
+          # wget https://download.samba.org/pub/samba/stable/samba-4.15.1.tar.gz
+          
+          After the download is finished extract the content by enter the following command:
+          # tar xzfv samba-4.15.1.tar.gz
+          
+          Browse into the folder by entering the following command:
+          # cd samba-4.15.1
+          
+          # Now execute the following command 
+          ./configure --enable-debug --enable-selftest --with-ads --with-systemd --with-winbind --enable-fhs –-enable-cups --sbindir=/sbin/ --sysconfdir=/etc/ --mandir=/usr/share/man/ --localstatedir=/var --prefix=/usr
+          
+          If no error is displayed, you may proceed with the following command:
+          # make
+          
+          if the make command finishes successfuly, proceed with the following command
+          # make install 
+          
+          If no error is displayed, you may proceed with the following command:
+          # samba-tool domain provision --use-rfc2307 --interactive
+          
+          # when prompt provide the required information
+          
+          
+          
+          
+          
+  
